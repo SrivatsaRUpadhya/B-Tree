@@ -20,16 +20,16 @@ tree_node *find_insert_loc(tree_node *root, int val);
 void insert(tree_node **root, int val);
 bool needs_balance(tree_node *node);
 tree_node *balance(tree_node **node);
-void util_add_key(tree_node *node, int key);
+void util_add_key(tree_node **node, int key);
 bool util_node_has_children(tree_node *node);
 void util_print_node_keys(tree_node *node);
 void traverse_tree(tree_node *root);
 void assign_parent(tree_node *parent, tree_node *child);
 
 int main() {
-  int insert_list[] = {1, 2, 3, 4, 5, 6, 7};
+  int insert_list[] = {10, 9, 11, 21, 1, 88, 44, 4};
   tree_node *root = NULL;
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < sizeof(insert_list) / sizeof(int); i++) {
     printf("inserting %d\n", insert_list[i]);
     insert(&root, insert_list[i]);
   }
@@ -48,7 +48,7 @@ void insert(tree_node **root, int val) {
     if (new_root != NULL)
       *root = new_root;
   }
-  util_add_key(insert_loc, val);
+  util_add_key(&insert_loc, val);
 }
 
 bool needs_balance(tree_node *node) {
@@ -89,13 +89,13 @@ tree_node *balance(tree_node **node_ptr) {
     less_than_median = create_node();
     assign_parent(new_root, less_than_median);
     for (int i = 0; i < median; i++) {
-      util_add_key(less_than_median, node->keys[i]);
+      util_add_key(&less_than_median, node->keys[i]);
     }
     tree_node *more_than_median = node->child[node->element_count + 1];
     more_than_median = create_node();
     assign_parent(new_root, more_than_median);
     for (int i = median + 1; i < node->element_count; i++) {
-      util_add_key(more_than_median, node->keys[i]);
+      util_add_key(&more_than_median, node->keys[i]);
     }
     for (int i = 0; i <= median + 1; i++) {
       less_than_median->child[i] = node->child[i];
@@ -116,18 +116,18 @@ tree_node *balance(tree_node **node_ptr) {
   tree_node *new_root = NULL;
   if (!needs_balance(node->parent)) {
     parent = node->parent;
-    util_add_key(parent, node->keys[median]);
+    util_add_key(&parent, node->keys[median]);
     // TODO: Maybe use the current node itself as less_than_median node and skip
     // malloc and freeing of current node memory
     tree_node *less_than_median = create_node();
     assign_parent(parent, less_than_median);
     for (int i = 0; i < median; i++) {
-      util_add_key(less_than_median, node->keys[i]);
+      util_add_key(&less_than_median, node->keys[i]);
     }
     tree_node *greater_than_median = create_node();
     assign_parent(parent, greater_than_median);
     for (int i = median + 1; i < node->element_count; i++) {
-      util_add_key(greater_than_median, node->keys[i]);
+      util_add_key(&greater_than_median, node->keys[i]);
     }
     parent->child[parent->element_count - 1] = less_than_median;
     parent->child[parent->element_count] = greater_than_median;
@@ -138,16 +138,16 @@ tree_node *balance(tree_node **node_ptr) {
     tree_node *new_root = balance(&parent);
     // TODO: Maybe use the current node itself as less_than_median node and skip
     // malloc and freeing of current node memory
-    util_add_key(parent, node->keys[median]);
+    util_add_key(&parent, node->keys[median]);
     tree_node *less_than_median = create_node();
     assign_parent(parent, less_than_median);
     for (int i = 0; i < median; i++) {
-      util_add_key(less_than_median, node->keys[i]);
+      util_add_key(&less_than_median, node->keys[i]);
     }
     tree_node *greater_than_median = create_node();
     assign_parent(parent, greater_than_median);
     for (int i = median + 1; i < node->element_count; i++) {
-      util_add_key(greater_than_median, node->keys[i]);
+      util_add_key(&greater_than_median, node->keys[i]);
     }
     parent->child[parent->element_count - 1] = less_than_median;
     parent->child[parent->element_count] = greater_than_median;
@@ -183,7 +183,7 @@ tree_node *create_node() {
 }
 tree_node *create_root(int val) {
   tree_node *node = create_node();
-  util_add_key(node, val);
+  util_add_key(&node, val);
   return node;
 }
 
@@ -198,9 +198,28 @@ void traverse_tree(tree_node *root) {
 }
 
 // add key to node and increment element count
-void util_add_key(tree_node *node, int key) {
+void util_add_key(tree_node **node_ptr, int key) {
+  tree_node *node = *node_ptr;
   assert(node->element_count < ELEMENTS_PER_NODE);
-  int idx = node->element_count;
+  int idx = 0;
+  if (node->element_count == 0) {
+    node->keys[idx] = key;
+    node->element_count++;
+    return;
+  }
+  while (idx < node->element_count && key >= node->keys[idx])
+    idx++;
+  if (idx == node->element_count) {
+    node->keys[idx] = key;
+    node->element_count++;
+    return;
+  }
+  for (int i = node->element_count - 1, j = node->element_count;
+       i >= idx && j >= idx - 1; i--, j--) {
+    node->keys[i + 1] = node->keys[i];
+    (*node_ptr)->child[j + 1] = node->child[j];
+    (*node_ptr)->child[j] = node->child[j - 1];
+  }
   node->keys[idx] = key;
   node->element_count++;
 }
